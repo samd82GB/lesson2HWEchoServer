@@ -26,11 +26,12 @@ public class FirstServerHandler extends SimpleChannelInboundHandler<Message> {
         }
         if (msg instanceof AuthMessage) {
             AuthMessage message = (AuthMessage) msg;
-            System.out.println("incoming text message login: " + message.getLogin());
-            System.out.println("incoming text message password: " + message.getPassword());
+            System.out.println("incoming login message: " + message.getLogin());
+            System.out.println("incoming password message: " + message.getPassword());
             ctx.writeAndFlush(msg);
         }
     }
+
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
