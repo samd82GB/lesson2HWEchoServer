@@ -12,11 +12,11 @@ import io.netty.handler.codec.LengthFieldPrepender;
 import io.netty.handler.codec.string.StringDecoder;
 import io.netty.handler.codec.string.StringEncoder;
 import io.netty.util.ReferenceCountUtil;
-import message.AuthMessage;
-import message.DateMessage;
-import message.Message;
-import message.TextMessage;
+import message.*;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.Date;
@@ -40,16 +40,37 @@ public class Client {
                             ch.pipeline().addLast(
                                     new LengthFieldBasedFrameDecoder(1024 * 1024, 0, 3, 0, 3),
                                     new LengthFieldPrepender(3),
-                                    new StringDecoder(),
-                                    new StringEncoder(),
                                     new JsonDecoder(),
                                     new JsonEncoder(),
                                     new SimpleChannelInboundHandler<Message>() {
                                         @Override
+                                        public void channelActive(ChannelHandlerContext ctx) throws Exception {
+                                            final FileRequestMessage message = new FileRequestMessage();
+                                            message.setPath("g:\\GeekBrains\\06_Git\\progit_v2.1.73.pdf");
+                                            ctx.writeAndFlush(message);
+                                        }
+
+                                        @Override
                                         protected void channelRead0(ChannelHandlerContext ctx, Message msg) {
-                                            if (msg instanceof TextMessage) {
+                                            System.out.println("receive msg: " + msg);
+                                            if (msg instanceof FileContentMessage){
+                                                FileContentMessage fcm = (FileContentMessage)msg;
+                                                try (final RandomAccessFile accessFile = new RandomAccessFile("g:\\GeekBrains\\06_Git\\progit.pdf","rw")) {
+                                                    System.out.println(fcm.getStartPosition());
+                                                    accessFile.seek(fcm.getStartPosition());
+                                                    accessFile.write(fcm.getContent());
+                                                if (fcm.isLast()) {
+                                                    ctx.close();
+                                                    }
+
+                                                } catch (IOException e) {
+                                                    throw new RuntimeException(e);
+                                                }
+                                            }
+
+                                            /*if (msg instanceof TextMessage) {
                                                 TextMessage message = (TextMessage) msg;
-                                                System.out.println("receive text: " + message.getText());
+
                                             }
                                             if (msg instanceof DateMessage) {
                                                 DateMessage message = (DateMessage) msg;
@@ -59,7 +80,7 @@ public class Client {
                                                 AuthMessage message = (AuthMessage) msg;
                                                 System.out.println("receive login: " + message.getLogin());
                                                 System.out.println("receive password: " + message.getPassword());
-                                            }
+                                            }*/
 
                                         }
                                     }
@@ -69,9 +90,11 @@ public class Client {
 
             System.out.println("Client started");
 
-            ChannelFuture channelFuture = bootstrap.connect("localhost", 9000).sync();
+            //ChannelFuture channelFuture = bootstrap.connect("localhost", 9000).sync();
+            Channel channel = bootstrap.connect("localhost",9000).sync().channel();
+            channel.closeFuture().sync();
 
-            while (channelFuture.channel().isActive()) {
+            /*while (channelFuture.channel().isActive()) {
                 TextMessage textMessage = new TextMessage();
                 textMessage.setText(String.format("[%tD] %s", LocalDateTime.now(), Thread.currentThread().getName()));
                 System.out.println("Try to send message: " + textMessage.getText());
@@ -94,7 +117,7 @@ public class Client {
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
-            }
+            }*/
 
         } catch (InterruptedException e) {
             e.printStackTrace();
